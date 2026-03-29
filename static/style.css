@@ -3,11 +3,41 @@
     --bg-secondary: #f4f4f5;
     --accent: #111827;
     --accent-hover: #374151;
+    --accent-fg: #ffffff;       /* text ON accent-colored buttons */
     --text-primary: #171717;
     --text-secondary: #525252;
     --glass-bg: #ffffff;
     --glass-border: #e5e5e5;
     --glass-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+    --toggle-bg: #f4f4f5;
+    --toggle-border: #d4d4d4;
+    --highlight-bg: rgba(0, 0, 0, 0.08);
+    --highlight-color: #111827;
+    --spinner-track: rgba(0, 0, 0, 0.15);
+    --spinner-fill: #111827;
+    --outline-btn-bg: transparent;
+    --outline-btn-bg-hover: rgba(0, 0, 0, 0.05);
+}
+
+body.dark-theme {
+    --bg-primary: #0a0a0a;
+    --bg-secondary: #171717;
+    --accent: #f8fafc;
+    --accent-hover: #e2e8f0;
+    --accent-fg: #0a0a0a;       /* text ON accent-colored buttons in dark mode */
+    --text-primary: #f8fafc;
+    --text-secondary: #a1a1aa;
+    --glass-bg: #111111;
+    --glass-border: #27272a;
+    --glass-shadow: 0 2px 4px rgba(0, 0, 0, 0.4);
+    --toggle-bg: #27272a;
+    --toggle-border: #3f3f46;
+    --highlight-bg: rgba(255, 255, 255, 0.15);
+    --highlight-color: #f8fafc;
+    --spinner-track: rgba(255, 255, 255, 0.2);
+    --spinner-fill: #0a0a0a;
+    --outline-btn-bg: transparent;
+    --outline-btn-bg-hover: rgba(255, 255, 255, 0.05);
 }
 
 * {
@@ -23,6 +53,7 @@ body {
     min-height: 100vh;
     padding: 4rem 1rem;
     overflow-x: hidden;
+    transition: background-color 0.2s, color 0.2s;
 }
 
 .main-wrapper {
@@ -58,6 +89,32 @@ header {
     margin-top: 0.25rem;
 }
 
+/* Theme Toggle Button */
+#themeToggleBtn {
+    position: fixed;
+    top: 1.5rem;
+    right: 1.5rem;
+    background: var(--toggle-bg) !important;
+    border: 1px solid var(--toggle-border) !important;
+    border-radius: 50%;
+    width: 44px;
+    height: 44px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    color: var(--text-primary) !important;
+    padding: 0;
+    transition: background-color 0.2s, border-color 0.2s, color 0.2s;
+    z-index: 100;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.12);
+}
+
+#themeToggleBtn:hover {
+    background: var(--glass-border) !important;
+    transform: none;
+}
+
 /* Glass Panels -> Flat Panels */
 .glass-panel {
     background: var(--glass-bg);
@@ -65,7 +122,7 @@ header {
     border-radius: 8px;
     box-shadow: none;
     padding: 1.5rem;
-    transition: transform 0.2s ease, box-shadow 0.2s ease;
+    transition: background-color 0.2s, border-color 0.2s;
 }
 
 /* Search Box */
@@ -92,19 +149,25 @@ input[type="text"] {
     transition: border-color 0.2s, box-shadow 0.2s;
 }
 
+input[type="text"]::placeholder {
+    color: var(--text-secondary);
+}
+
 input[type="text"]:focus {
     border-color: var(--accent);
     box-shadow: 0 0 0 1px var(--accent);
 }
 
+/* Primary filled button */
 button {
     background: var(--accent);
-    color: white;
+    color: var(--accent-fg);
     border: none;
     border-radius: 6px;
     padding: 0 2rem;
     font-weight: 500;
     font-size: 0.95rem;
+    font-family: inherit;
     cursor: pointer;
     display: flex;
     align-items: center;
@@ -125,6 +188,18 @@ button.loading {
     background: var(--glass-border);
     color: var(--text-secondary);
     cursor: not-allowed;
+}
+
+/* Outline / ghost button (Build Index) */
+.btn-outline {
+    background: var(--outline-btn-bg) !important;
+    color: var(--text-primary) !important;
+    border: 1px solid var(--glass-border) !important;
+    font-weight: 500;
+}
+
+.btn-outline:hover {
+    background: var(--outline-btn-bg-hover) !important;
 }
 
 /* Config Dropdowns */
@@ -171,8 +246,9 @@ select {
     appearance: none;
     background-image: url("data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22292.4%22%20height%3D%22292.4%22%3E%3Cpath%20fill%3D%22%23525252%22%20d%3D%22M287%2069.4a17.6%2017.6%200%200%200-13-5.4H18.4c-5%200-9.3%201.8-12.9%205.4A17.6%2017.6%200%200%200%200%2082.2c0%205%201.8%209.3%205.4%2012.9l128%20127.9c3.6%203.6%207.8%205.4%2012.8%205.4s9.2-1.8%2012.8-5.4L287%2095c3.5-3.5%205.4-7.8%205.4-12.8%200-5-1.9-9.2-5.5-12.8z%22%2F%3E%3C%2Fsvg%3E");
     background-repeat: no-repeat;
-    background-position: right 1rem top 50%;
-    background-size: 0.65rem auto;
+    background-position: right 1rem top 50%, 0 0;
+    background-size: 0.65rem auto, 100%;
+    transition: border-color 0.2s;
 }
 
 select:focus {
@@ -239,7 +315,7 @@ select option {
 .doc-id {
     font-family: inherit;
     font-weight: 500;
-    color: var(--accent);
+    color: var(--text-primary);
     font-size: 1rem;
 }
 
@@ -281,6 +357,39 @@ select option {
     border: 1px solid #ef4444;
 }
 
+/* Skeleton Loader */
+@keyframes shimmer {
+    0% { background-position: -800px 0; }
+    100% { background-position: 800px 0; }
+}
+
+.skeleton-card {
+    background: var(--glass-bg);
+    border: 1px solid var(--glass-border);
+    border-radius: 8px;
+    padding: 1.5rem;
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.skeleton-element {
+    background: linear-gradient(90deg, var(--bg-secondary) 25%, var(--glass-border) 50%, var(--bg-secondary) 75%);
+    background-size: 800px 100%;
+    animation: shimmer 1.5s infinite linear;
+    border-radius: 4px;
+}
+
+/* Spinner — uses CSS vars so it works on both themes */
+.spinner {
+    border: 2px solid var(--spinner-track);
+    border-radius: 50%;
+    border-top: 2px solid var(--spinner-fill);
+    width: 1rem;
+    height: 1rem;
+    animation: spin 1s linear infinite;
+}
+
 /* Animations */
 @keyframes fadeIn {
     from { opacity: 0; transform: translateY(10px); }
@@ -289,7 +398,7 @@ select option {
 
 .fade-in {
     animation: fadeIn 0.4s ease forwards;
-    opacity: 0; /* starts hidden for animation */
+    opacity: 0;
 }
 
 @keyframes pulse {
@@ -299,16 +408,6 @@ select option {
 
 .animate-pulse {
     animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
-}
-
-/* Spinner */
-.spinner {
-    border: 2px solid rgba(255,255,255,0.3);
-    border-radius: 50%;
-    border-top: 2px solid white;
-    width: 1rem;
-    height: 1rem;
-    animation: spin 1s linear infinite;
 }
 
 @keyframes spin {

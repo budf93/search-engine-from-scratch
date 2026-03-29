@@ -9,6 +9,8 @@
     <link rel="icon" href="data:,">
 </head>
 <body>
+    <button id="themeToggleBtn"></button>
+
     <div class="glass-container main-wrapper">
         <header>
             <div class="logo">
@@ -64,7 +66,7 @@
                 </div>
 
                 <div class="config-group" style="margin-top: auto; display: flex; align-items: flex-end;">
-                    <button id="buildIndexBtn" style="width: 100%; padding: 0.75rem; background: rgba(255, 255, 255, 0.05); color: var(--accent); border: 1px solid var(--accent); border-radius: 6px; cursor: pointer; font-weight: 600; display: flex; justify-content: center; align-items: center; gap: 0.5rem; transition: 0.2s;">
+                    <button id="buildIndexBtn" class="btn-outline" style="width: 100%; padding: 0.75rem;">
                         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
                         <span>Build/Rebuild Index</span>
                     </button>
@@ -160,6 +162,28 @@
             }
         });
 
+        const themeToggleBtn = document.getElementById('themeToggleBtn');
+        const sunSvg = `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" class="animate-pulse" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="5"></circle><line x1="12" y1="1" x2="12" y2="3"></line><line x1="12" y1="21" x2="12" y2="23"></line><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line><line x1="1" y1="12" x2="3" y2="12"></line><line x1="21" y1="12" x2="23" y2="12"></line><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line></svg>`;
+        const moonSvg = `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path></svg>`;
+
+        if (localStorage.getItem('theme') === 'dark' || (!localStorage.getItem('theme') && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+            document.body.classList.add('dark-theme');
+            themeToggleBtn.innerHTML = sunSvg;
+        } else {
+            themeToggleBtn.innerHTML = moonSvg;
+        }
+
+        themeToggleBtn.addEventListener('click', () => {
+            document.body.classList.toggle('dark-theme');
+            if (document.body.classList.contains('dark-theme')) {
+                localStorage.setItem('theme', 'dark');
+                themeToggleBtn.innerHTML = sunSvg;
+            } else {
+                localStorage.setItem('theme', 'light');
+                themeToggleBtn.innerHTML = moonSvg;
+            }
+        });
+
         async function performSearch() {
             const query = searchInput.value.trim();
             if (!query) return;
@@ -170,6 +194,20 @@
             searchBtn.querySelector('span').textContent = 'Searching...';
             resultsContainer.innerHTML = '';
             metricsContainer.classList.add('hidden');
+
+            for (let i = 0; i < 3; i++) {
+                resultsContainer.innerHTML += `
+                    <div class="skeleton-card fade-in" style="animation-delay: ${i * 0.1}s">
+                        <div style="display: flex; justify-content: space-between;">
+                            <div class="skeleton-element" style="height: 1.2rem; width: 40px;"></div>
+                            <div class="skeleton-element" style="height: 1.2rem; width: 80px;"></div>
+                        </div>
+                        <div class="skeleton-element" style="height: 1rem; width: 95%; margin-top: 0.5rem;"></div>
+                        <div class="skeleton-element" style="height: 1rem; width: 85%;"></div>
+                        <div class="skeleton-element" style="height: 1rem; width: 60%;"></div>
+                    </div>
+                `;
+            }
 
             const payload = {
                 query: query,
@@ -224,7 +262,10 @@
                 const clone = template.content.cloneNode(true);
                 clone.querySelector('.doc-id').textContent = res.doc_id;
                 clone.querySelector('.score-badge').textContent = `Score: ${res.score}`;
-                clone.querySelector('.snippet').textContent = res.snippet;
+                
+                // Highlight query tokens
+                const snippetSpan = clone.querySelector('.snippet');
+                snippetSpan.innerHTML = highlightSnippet(res.snippet, searchInput.value);
                 
                 // Stagger animations
                 const card = clone.querySelector('.result-card');
@@ -232,6 +273,20 @@
                 
                 resultsContainer.appendChild(clone);
             });
+        }
+
+        function highlightSnippet(snippet, query) {
+            if (!query || query.trim() === '') return snippet;
+            const tokens = query.trim().split(/\s+/).filter(t => t.length > 0);
+            let highlighted = snippet;
+            
+            // Generate a secure, unique regex for each token, ignoring case
+            tokens.forEach(token => {
+                const safeToken = token.replace(/[-[\]{}()*+?.,\\^$|#\s]/g, '\\$&');
+                const regex = new RegExp(`(${safeToken})`, 'gi');
+                highlighted = highlighted.replace(regex, '<mark style="background: var(--highlight-bg); color: var(--highlight-color); font-weight: 600; padding: 0 0.2rem; border-radius: 3px;">$1</mark>');
+            });
+            return highlighted;
         }
 
         function renderError(message) {

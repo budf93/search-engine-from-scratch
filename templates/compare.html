@@ -93,6 +93,8 @@
     </style>
 </head>
 <body>
+    <button id="themeToggleBtn" style="position: absolute; top: 2rem; right: 2rem; background: var(--glass-bg); border: 1px solid var(--glass-border); border-radius: 50%; width: 44px; height: 44px; display: flex; align-items: center; justify-content: center; cursor: pointer; color: var(--text-primary); transition: all 0.2s;"></button>
+
     <div class="glass-container main-wrapper">
         <header>
             <div class="logo">
@@ -187,6 +189,28 @@
             { id: 'colbert', name: 'ColBERT (Re-ranker)' }
         ];
 
+        const themeToggleBtn = document.getElementById('themeToggleBtn');
+        const sunSvg = `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" class="animate-pulse" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="5"></circle><line x1="12" y1="1" x2="12" y2="3"></line><line x1="12" y1="21" x2="12" y2="23"></line><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line><line x1="1" y1="12" x2="3" y2="12"></line><line x1="21" y1="12" x2="23" y2="12"></line><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line></svg>`;
+        const moonSvg = `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path></svg>`;
+
+        if (localStorage.getItem('theme') === 'dark' || (!localStorage.getItem('theme') && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+            document.body.classList.add('dark-theme');
+            themeToggleBtn.innerHTML = sunSvg;
+        } else {
+            themeToggleBtn.innerHTML = moonSvg;
+        }
+
+        themeToggleBtn.addEventListener('click', () => {
+            document.body.classList.toggle('dark-theme');
+            if (document.body.classList.contains('dark-theme')) {
+                localStorage.setItem('theme', 'dark');
+                themeToggleBtn.innerHTML = sunSvg;
+            } else {
+                localStorage.setItem('theme', 'light');
+                themeToggleBtn.innerHTML = moonSvg;
+            }
+        });
+
         const grid = document.getElementById('compareGrid');
         const template = document.getElementById('modelCardTemplate');
         const modeSelect = document.getElementById('modeSelect');
@@ -252,19 +276,40 @@
             Chart.defaults.color = '#525252';
 
             metricsChartInstance = new Chart(ctxMetrics, {
-                type: 'bar',
+                type: 'radar',
                 data: {
-                    labels: ['RBP', 'DCG', 'NDCG', 'MAP'],
+                    labels: ['RBP (Rank-Biased)', 'NDCG (Normalized Discounted)', 'MAP (Mean Average Precision)'],
                     datasets: [
-                        { label: m1.name, data: [0, 0, 0, 0], backgroundColor: '#111827', borderRadius: 4 },
-                        { label: m2.name, data: [0, 0, 0, 0], backgroundColor: '#9ca3af', borderRadius: 4 }
+                        { 
+                            label: m1.name, 
+                            data: [0, 0, 0], 
+                            backgroundColor: 'rgba(17, 24, 39, 0.2)', 
+                            borderColor: '#111827',
+                            pointBackgroundColor: '#111827',
+                            borderWidth: 2
+                        },
+                        { 
+                            label: m2.name, 
+                            data: [0, 0, 0], 
+                            backgroundColor: 'rgba(156, 163, 175, 0.2)', 
+                            borderColor: '#9ca3af',
+                            pointBackgroundColor: '#9ca3af',
+                            borderWidth: 2
+                        }
                     ]
                 },
                 options: {
                     responsive: true,
                     maintainAspectRatio: false,
                     plugins: { legend: { position: 'top' }, tooltip: { mode: 'index', intersect: false } },
-                    scales: { y: { beginAtZero: true } }
+                    scales: { 
+                        r: { 
+                            angleLines: { display: true, color: 'rgba(0,0,0,0.05)' },
+                            grid: { color: 'rgba(0,0,0,0.05)' },
+                            suggestedMin: 0,
+                            suggestedMax: 1
+                        } 
+                    }
                 }
             });
 
@@ -379,7 +424,7 @@
                 
                 const datasetIndex = colIndex - 1;
                 
-                metricsChartInstance.data.datasets[datasetIndex].data = [m.RBP, m.DCG, m.NDCG, m.AP];
+                metricsChartInstance.data.datasets[datasetIndex].data = [m.RBP, m.NDCG, m.AP];
                 metricsChartInstance.update();
                 
                 latencyChartInstance.data.datasets[datasetIndex].data = [data.latency_seconds];
