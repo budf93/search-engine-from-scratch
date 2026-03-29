@@ -4,9 +4,10 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Compare Performance | Search Engine From Scratch</title>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="/static/style.css">
     <link rel="icon" href="data:,">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         .compare-grid {
             display: grid;
@@ -29,8 +30,9 @@
         }
 
         .model-header h3 {
-            font-size: 1.2rem;
-            color: white;
+            font-size: 1.1rem;
+            color: var(--text-primary);
+            font-weight: 500;
             margin: 0;
         }
 
@@ -107,20 +109,20 @@
 
         <div class="glass-panel" style="margin-top: 1.5rem; display: flex; flex-wrap: wrap; gap: 1rem; align-items: center; justify-content: space-between; padding: 1rem 1.5rem;">
             <div style="display: flex; gap: 1rem; align-items: center; flex-wrap: wrap;">
-                <label style="color: white; font-weight: 500;">Comparison Mode:</label>
-                <select id="modeSelect" style="padding: 0.5rem; background: rgba(0,0,0,0.2); color: white; border: 1px solid rgba(255,255,255,0.1); border-radius: 6px;">
+                <label style="color: var(--text-primary); font-weight: 500;">Comparison Mode:</label>
+                <select id="modeSelect" style="padding: 0.5rem; background: var(--bg-secondary); color: var(--text-primary); border: 1px solid var(--glass-border); border-radius: 6px;">
                     <option value="all">Compare All Models</option>
                     <option value="two">Compare Two Methods</option>
                 </select>
                 
                 <div id="twoModeConfig" style="display: none; gap: 1rem; align-items: center;">
-                    <select id="model1Select" style="padding: 0.5rem; background: rgba(0,0,0,0.2); color: white; border: 1px solid rgba(255,255,255,0.1); border-radius: 6px;"></select>
+                    <select id="model1Select" style="padding: 0.5rem; background: var(--bg-secondary); color: var(--text-primary); border: 1px solid var(--glass-border); border-radius: 6px;"></select>
                     <span style="color: var(--text-secondary);">vs</span>
-                    <select id="model2Select" style="padding: 0.5rem; background: rgba(0,0,0,0.2); color: white; border: 1px solid rgba(255,255,255,0.1); border-radius: 6px;"></select>
+                    <select id="model2Select" style="padding: 0.5rem; background: var(--bg-secondary); color: var(--text-primary); border: 1px solid var(--glass-border); border-radius: 6px;"></select>
                 </div>
             </div>
             
-            <button id="runAllBtn" style="padding: 0.5rem 1.5rem; background: rgba(255, 255, 255, 0.05); color: var(--accent); border: 1px solid var(--accent); border-radius: 6px; cursor: pointer; font-weight: 600; transition: 0.2s;">
+            <button id="runAllBtn" style="padding: 0.5rem 1.5rem; background: var(--accent); color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: 500; transition: 0.2s;">
                 ▶ Run Benchmark Sequence
             </button>
         </div>
@@ -128,6 +130,18 @@
         <section class="compare-grid" id="compareGrid">
             <!-- Rendered by JS -->
         </section>
+
+        <div id="twoModeTable" class="glass-panel" style="display: none; margin-top: 1.5rem; background: var(--glass-bg); padding: 2rem;">
+            <div style="font-weight: 500; margin-bottom: 1rem; color: var(--text-primary); text-align: center; font-size: 1.1rem;">Retrieval Precision Metrics</div>
+            <div style="position: relative; height: 350px; width: 100%;">
+                <canvas id="metricsChart"></canvas>
+            </div>
+            
+            <div style="font-weight: 500; margin-top: 3rem; margin-bottom: 1rem; color: var(--text-primary); text-align: center; font-size: 1.1rem;">Response Latency (Seconds)</div>
+            <div style="position: relative; height: 150px; width: 100%;">
+                <canvas id="latencyChart"></canvas>
+            </div>
+        </div>
     </div>
 
     <template id="modelCardTemplate">
@@ -181,6 +195,9 @@
         const model2Select = document.getElementById('model2Select');
         const runAllBtn = document.getElementById('runAllBtn');
 
+        let metricsChartInstance = null;
+        let latencyChartInstance = null;
+
         // Populate dropdowns
         models.forEach(m => {
             model1Select.add(new Option(m.name, m.id));
@@ -190,34 +207,83 @@
 
         function renderGrid() {
             grid.innerHTML = '';
-            let activeModels = [];
             
             if (modeSelect.value === 'all') {
                 twoModeConfig.style.display = 'none';
-                activeModels = models;
+                grid.style.display = 'grid';
+                document.getElementById('twoModeTable').style.display = 'none';
+
+                models.forEach((model, i) => {
+                    const clone = template.content.cloneNode(true);
+                    const card = clone.querySelector('.model-card');
+                    
+                    card.querySelector('.model-title').textContent = model.name;
+                    const btn = card.querySelector('.btn-evaluate');
+                    const timeBadge = card.querySelector('.time-badge');
+                    
+                    card.style.animationDelay = `${i * 0.1}s`;
+
+                    btn.addEventListener('click', async () => {
+                        await evaluateModel(model.id, card, btn, timeBadge);
+                    });
+
+                    grid.appendChild(clone);
+                });
             } else {
                 twoModeConfig.style.display = 'flex';
-                activeModels = [
-                    models.find(m => m.id === model1Select.value),
-                    models.find(m => m.id === model2Select.value)
-                ];
+                grid.style.display = 'none';
+                document.getElementById('twoModeTable').style.display = 'block';
+                
+                resetTable();
             }
+        }
 
-            activeModels.forEach((model, i) => {
-                const clone = template.content.cloneNode(true);
-                const card = clone.querySelector('.model-card');
-                
-                card.querySelector('.model-title').textContent = model.name;
-                const btn = card.querySelector('.btn-evaluate');
-                const timeBadge = card.querySelector('.time-badge');
-                
-                card.style.animationDelay = `${i * 0.1}s`;
+        function resetTable() {
+            const m1 = models.find(m => m.id === model1Select.value);
+            const m2 = models.find(m => m.id === model2Select.value);
 
-                btn.addEventListener('click', async () => {
-                    await evaluateModel(model.id, card, btn, timeBadge);
-                });
+            const ctxMetrics = document.getElementById('metricsChart').getContext('2d');
+            const ctxLatency = document.getElementById('latencyChart').getContext('2d');
 
-                grid.appendChild(clone);
+            if (metricsChartInstance) metricsChartInstance.destroy();
+            if (latencyChartInstance) latencyChartInstance.destroy();
+
+            Chart.defaults.font.family = "'Poppins', sans-serif";
+            Chart.defaults.color = '#525252';
+
+            metricsChartInstance = new Chart(ctxMetrics, {
+                type: 'bar',
+                data: {
+                    labels: ['RBP', 'DCG', 'NDCG', 'MAP'],
+                    datasets: [
+                        { label: m1.name, data: [0, 0, 0, 0], backgroundColor: '#111827', borderRadius: 4 },
+                        { label: m2.name, data: [0, 0, 0, 0], backgroundColor: '#9ca3af', borderRadius: 4 }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { position: 'top' }, tooltip: { mode: 'index', intersect: false } },
+                    scales: { y: { beginAtZero: true } }
+                }
+            });
+
+            latencyChartInstance = new Chart(ctxLatency, {
+                type: 'bar',
+                data: {
+                    labels: ['Latency (s)'],
+                    datasets: [
+                        { label: m1.name, data: [0], backgroundColor: '#111827', borderRadius: 4 },
+                        { label: m2.name, data: [0], backgroundColor: '#9ca3af', borderRadius: 4 }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    indexAxis: 'y',
+                    plugins: { legend: { display: false }, tooltip: { mode: 'index', intersect: false } },
+                    scales: { x: { beginAtZero: true } }
+                }
             });
         }
 
@@ -268,33 +334,60 @@
         model2Select.addEventListener('change', renderGrid);
 
         runAllBtn.addEventListener('click', async () => {
-            const buttons = document.querySelectorAll('.btn-evaluate');
             const originalText = runAllBtn.textContent;
-            runAllBtn.textContent = 'Running All...';
+            runAllBtn.textContent = 'Running Sequence...';
             runAllBtn.style.opacity = '0.5';
             runAllBtn.style.pointerEvents = 'none';
 
-            // Execute sequentially so neural models don't crash from out-of-memory
-            for(let btn of buttons) {
-                if(btn.style.display !== 'none') {
-                    await new Promise(resolve => {
-                        btn.click();
-                        // intercept the end of the evaluating button
-                        const observer = new MutationObserver(mutations => {
-                            if(btn.style.display === 'none' || btn.textContent === 'Retry Evaluation') {
-                                observer.disconnect();
-                                resolve();
-                            }
+            if (modeSelect.value === 'all') {
+                const buttons = document.querySelectorAll('.btn-evaluate');
+                for(let btn of buttons) {
+                    if(btn.style.display !== 'none') {
+                        await new Promise(resolve => {
+                            btn.click();
+                            const observer = new MutationObserver(mutations => {
+                                if(btn.style.display === 'none' || btn.textContent === 'Retry Evaluation') {
+                                    observer.disconnect();
+                                    resolve();
+                                }
+                            });
+                            observer.observe(btn, { attributes: true, characterData: true, childList: true });
                         });
-                        observer.observe(btn, { attributes: true, characterData: true, childList: true });
-                    });
+                    }
                 }
+            } else {
+                resetTable();
+                await evaluateTable(model1Select.value, 1);
+                await evaluateTable(model2Select.value, 2);
             }
             
             runAllBtn.textContent = originalText;
             runAllBtn.style.opacity = '1';
             runAllBtn.style.pointerEvents = 'auto';
         });
+
+        async function evaluateTable(modelId, colIndex) {
+            try {
+                const response = await fetch('/api/evaluate', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ index_type: 'spimi', encoding: 'vbyte', scoring: modelId })
+                });
+                const data = await response.json();
+                if (!response.ok) throw new Error(data.error || "Evaluation failed");
+                const m = data.metrics;
+                
+                const datasetIndex = colIndex - 1;
+                
+                metricsChartInstance.data.datasets[datasetIndex].data = [m.RBP, m.DCG, m.NDCG, m.AP];
+                metricsChartInstance.update();
+                
+                latencyChartInstance.data.datasets[datasetIndex].data = [data.latency_seconds];
+                latencyChartInstance.update();
+            } catch (error) {
+                alert(`Error evaluating ${modelId}: ${error.message}`);
+            }
+        }
 
         // Initialize state
         renderGrid();
