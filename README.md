@@ -54,7 +54,7 @@ python app.py
 Once the server says `* Running on http://127.0.0.1:5000`:
 1. Open **http://127.0.0.1:5000** in your web browser.
 2. Select your Indexing strategy, Compression type, and Scoring method.
-3. Use the **Build/Rebuild Index** button to dynamically construct the necessary inverted index on the fly directly from the frontend. (The system securely segregates and isolates binary data by compression format to prevent memory corruption, e.g. V-Byte vs Elias-Gamma).
+3. Use the **Build/Rebuild Index** button to dynamically construct the necessary inverted index on the fly directly from the frontend.
 4. Try querying the engine to view actual response latency and ranked documents.
 5. Click **"Benchmark All Models"** to run the test suite against the engine and watch the animated metric comparisons (NDCG, MAP) render in real-time.
 
