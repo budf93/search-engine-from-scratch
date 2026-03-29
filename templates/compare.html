@@ -1,0 +1,303 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Compare Performance | Search Engine From Scratch</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/static/style.css">
+    <link rel="icon" href="data:,">
+    <style>
+        .compare-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 1.5rem;
+            margin-top: 1.5rem;
+        }
+
+        .model-card {
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+            padding: 1.5rem;
+        }
+
+        .model-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .model-header h3 {
+            font-size: 1.2rem;
+            color: white;
+            margin: 0;
+        }
+
+        .metric-row {
+            display: flex;
+            flex-direction: column;
+            gap: 0.25rem;
+        }
+
+        .metric-label {
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.85rem;
+            color: var(--text-secondary);
+            font-weight: 600;
+        }
+
+        .bar-container {
+            width: 100%;
+            height: 8px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 999px;
+            overflow: hidden;
+        }
+
+        .bar-fill {
+            height: 100%;
+            background: var(--accent);
+            border-radius: 999px;
+            width: 0%;
+            transition: width 1s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .btn-evaluate {
+            width: 100%;
+            padding: 0.75rem;
+            margin-top: auto;
+        }
+
+        .nav-links {
+            margin-top: 1rem;
+            text-align: center;
+        }
+        
+        .nav-links auto {
+            color: var(--accent);
+            text-decoration: none;
+            font-weight: 500;
+        }
+
+        .time-badge {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 0.25rem 0.5rem;
+            border-radius: 6px;
+            font-size: 0.8rem;
+            color: #d1d5db;
+        }
+    </style>
+</head>
+<body>
+    <div class="glass-container main-wrapper">
+        <header>
+            <div class="logo">
+                <svg width="32" height="32" viewBox="0 0 24 24" fill="none" class="animate-pulse">
+                    <path d="M12 3v18m-9-9h18" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                </svg>
+                <h1>Model Evaluation</h1>
+            </div>
+            <p class="subtitle">Benchmark RBP, DCG, NDCG, and AP across the dataset. Models execute synchronously to prevent CPU overload.</p>
+            <div class="nav-links">
+                <a href="/" style="color:var(--accent); text-decoration:none;">&larr; Back to Search</a>
+            </div>
+        </header>
+
+        <div class="glass-panel" style="margin-top: 1.5rem; display: flex; flex-wrap: wrap; gap: 1rem; align-items: center; justify-content: space-between; padding: 1rem 1.5rem;">
+            <div style="display: flex; gap: 1rem; align-items: center; flex-wrap: wrap;">
+                <label style="color: white; font-weight: 500;">Comparison Mode:</label>
+                <select id="modeSelect" style="padding: 0.5rem; background: rgba(0,0,0,0.2); color: white; border: 1px solid rgba(255,255,255,0.1); border-radius: 6px;">
+                    <option value="all">Compare All Models</option>
+                    <option value="two">Compare Two Methods</option>
+                </select>
+                
+                <div id="twoModeConfig" style="display: none; gap: 1rem; align-items: center;">
+                    <select id="model1Select" style="padding: 0.5rem; background: rgba(0,0,0,0.2); color: white; border: 1px solid rgba(255,255,255,0.1); border-radius: 6px;"></select>
+                    <span style="color: var(--text-secondary);">vs</span>
+                    <select id="model2Select" style="padding: 0.5rem; background: rgba(0,0,0,0.2); color: white; border: 1px solid rgba(255,255,255,0.1); border-radius: 6px;"></select>
+                </div>
+            </div>
+            
+            <button id="runAllBtn" style="padding: 0.5rem 1.5rem; background: rgba(255, 255, 255, 0.05); color: var(--accent); border: 1px solid var(--accent); border-radius: 6px; cursor: pointer; font-weight: 600; transition: 0.2s;">
+                ▶ Run Benchmark Sequence
+            </button>
+        </div>
+
+        <section class="compare-grid" id="compareGrid">
+            <!-- Rendered by JS -->
+        </section>
+    </div>
+
+    <template id="modelCardTemplate">
+        <div class="model-card glass-panel fade-in">
+            <div class="model-header">
+                <h3 class="model-title">Model</h3>
+                <span class="time-badge">- s</span>
+            </div>
+            
+            <div class="metrics-list">
+                <!-- RBP -->
+                <div class="metric-row">
+                    <div class="metric-label"><span>RBP</span> <span class="val-rbp">0.000</span></div>
+                    <div class="bar-container"><div class="bar-fill bar-rbp"></div></div>
+                </div>
+                <!-- DCG (max arbitrarily set to 15 for bar scaling) -->
+                <div class="metric-row">
+                    <div class="metric-label"><span>DCG</span> <span class="val-dcg">0.000</span></div>
+                    <div class="bar-container"><div class="bar-fill bar-dcg"></div></div>
+                </div>
+                <!-- NDCG -->
+                <div class="metric-row">
+                    <div class="metric-label"><span>NDCG</span> <span class="val-ndcg">0.000</span></div>
+                    <div class="bar-container"><div class="bar-fill bar-ndcg"></div></div>
+                </div>
+                <!-- AP -->
+                <div class="metric-row">
+                    <div class="metric-label"><span>MAP</span> <span class="val-map">0.000</span></div>
+                    <div class="bar-container"><div class="bar-fill bar-map"></div></div>
+                </div>
+            </div>
+
+            <button class="btn-evaluate">Evaluate on Queries</button>
+        </div>
+    </template>
+
+    <script>
+        const models = [
+            { id: 'tfidf', name: 'TF-IDF (SPIMI, V-Byte)' },
+            { id: 'bm25', name: 'BM25 (SPIMI, V-Byte)' },
+            { id: 'wand', name: 'WAND (SPIMI, V-Byte)' },
+            { id: 'splade', name: 'SPLADE (Neural Expand)' },
+            { id: 'colbert', name: 'ColBERT (Re-ranker)' }
+        ];
+
+        const grid = document.getElementById('compareGrid');
+        const template = document.getElementById('modelCardTemplate');
+        const modeSelect = document.getElementById('modeSelect');
+        const twoModeConfig = document.getElementById('twoModeConfig');
+        const model1Select = document.getElementById('model1Select');
+        const model2Select = document.getElementById('model2Select');
+        const runAllBtn = document.getElementById('runAllBtn');
+
+        // Populate dropdowns
+        models.forEach(m => {
+            model1Select.add(new Option(m.name, m.id));
+            model2Select.add(new Option(m.name, m.id));
+        });
+        model2Select.selectedIndex = 1;
+
+        function renderGrid() {
+            grid.innerHTML = '';
+            let activeModels = [];
+            
+            if (modeSelect.value === 'all') {
+                twoModeConfig.style.display = 'none';
+                activeModels = models;
+            } else {
+                twoModeConfig.style.display = 'flex';
+                activeModels = [
+                    models.find(m => m.id === model1Select.value),
+                    models.find(m => m.id === model2Select.value)
+                ];
+            }
+
+            activeModels.forEach((model, i) => {
+                const clone = template.content.cloneNode(true);
+                const card = clone.querySelector('.model-card');
+                
+                card.querySelector('.model-title').textContent = model.name;
+                const btn = card.querySelector('.btn-evaluate');
+                const timeBadge = card.querySelector('.time-badge');
+                
+                card.style.animationDelay = `${i * 0.1}s`;
+
+                btn.addEventListener('click', async () => {
+                    await evaluateModel(model.id, card, btn, timeBadge);
+                });
+
+                grid.appendChild(clone);
+            });
+        }
+
+        async function evaluateModel(modelId, card, btn, timeBadge) {
+            btn.classList.add('loading');
+            btn.textContent = 'Evaluating...';
+            
+            try {
+                const response = await fetch('/api/evaluate', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        index_type: 'spimi',
+                        encoding: 'vbyte',
+                        scoring: modelId
+                    })
+                });
+                
+                const data = await response.json();
+                if (!response.ok) throw new Error(data.error || "Evaluation failed");
+                
+                const m = data.metrics;
+                card.querySelector('.val-rbp').textContent = m.RBP.toFixed(3);
+                card.querySelector('.val-dcg').textContent = m.DCG.toFixed(3);
+                card.querySelector('.val-ndcg').textContent = m.NDCG.toFixed(3);
+                card.querySelector('.val-map').textContent = m.AP.toFixed(3);
+                
+                timeBadge.textContent = `${data.latency_seconds.toFixed(2)}s`;
+                
+                requestAnimationFrame(() => {
+                    card.querySelector('.bar-rbp').style.width = `${Math.min(100, m.RBP * 100)}%`;
+                    card.querySelector('.bar-dcg').style.width = `${Math.min(100, (m.DCG / 15) * 100)}%`;
+                    card.querySelector('.bar-ndcg').style.width = `${Math.min(100, m.NDCG * 100)}%`;
+                    card.querySelector('.bar-map').style.width = `${Math.min(100, m.AP * 100)}%`;
+                });
+                
+                btn.style.display = 'none';
+            } catch (error) {
+                alert(error.message);
+            } finally {
+                btn.classList.remove('loading');
+                if (btn.style.display !== 'none') btn.textContent = 'Retry Evaluation';
+            }
+        }
+
+        modeSelect.addEventListener('change', renderGrid);
+        model1Select.addEventListener('change', renderGrid);
+        model2Select.addEventListener('change', renderGrid);
+
+        runAllBtn.addEventListener('click', async () => {
+            const buttons = document.querySelectorAll('.btn-evaluate');
+            const originalText = runAllBtn.textContent;
+            runAllBtn.textContent = 'Running All...';
+            runAllBtn.style.opacity = '0.5';
+            runAllBtn.style.pointerEvents = 'none';
+
+            // Execute sequentially so neural models don't crash from out-of-memory
+            for(let btn of buttons) {
+                if(btn.style.display !== 'none') {
+                    await new Promise(resolve => {
+                        btn.click();
+                        // intercept the end of the evaluating button
+                        const observer = new MutationObserver(mutations => {
+                            if(btn.style.display === 'none' || btn.textContent === 'Retry Evaluation') {
+                                observer.disconnect();
+                                resolve();
+                            }
+                        });
+                        observer.observe(btn, { attributes: true, characterData: true, childList: true });
+                    });
+                }
+            }
+            
+            runAllBtn.textContent = originalText;
+            runAllBtn.style.opacity = '1';
+            runAllBtn.style.pointerEvents = 'auto';
+        });
+
+        // Initialize state
+        renderGrid();
+    </script>
+</body>
+</html>
